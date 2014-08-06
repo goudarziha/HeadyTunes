@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">Heady Tunes</string>
+    <string name="song_name">Dillon Francis - IDGAFOS 2.0</string>
+    <string name="post_date">July 25, 2014</string>
+    <string name="write_up">Post write up goes here, blah blah</string>
+    <string name="action_settings">Settings</string>
+
+</resources>
