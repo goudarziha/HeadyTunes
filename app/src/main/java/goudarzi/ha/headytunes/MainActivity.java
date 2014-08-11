@@ -3,14 +3,14 @@ package goudarzi.ha.headytunes;
 import android.app.Activity;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.widget.TextView;
+import android.widget.ListView;
 import android.widget.Toast;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.util.EntityUtils;
 import org.json.JSONArray;
@@ -18,61 +18,78 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.util.ArrayList;
 
 public class MainActivity extends Activity {
 
-    TextView httpStuff;
-    HttpClient client;
-    JSONObject json;
-
-    final static String URL = "headytunes.co/?json";
+    ListView list;
+    SongsAdaptor adapter;
+    ArrayList<Songs> songsList;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        httpStuff = (TextView) findViewById(R.id.tvHttp);
-        client = new DefaultHttpClient();
-        new Read().execute("temp");
+
+        list = (ListView) findViewById(R.id.lvList);
+        songsList = new ArrayList<Songs>();
+
+        new SongsAsyncTask().execute("http://headytunes.co/?json=get_recent_posts");
     }
 
-    public JSONObject lastPost(String number) throws ClientProtocolException, IOException, JSONException {
-        StringBuilder url = new StringBuilder(URL);
-        url.append(number);
-
-        HttpGet get = new HttpGet(url.toString());
-        HttpResponse r = client.execute(get);
-        int status = r.getStatusLine().getStatusCode();
-        if (status == 200) {
-            HttpEntity e = r.getEntity();
-            String data = EntityUtils.toString(e);
-            JSONArray posts = new JSONArray(data);
-            JSONObject last = posts.getJSONObject(0);
-            return last;
-        } else {
-            Toast.makeText(this, "error", Toast.LENGTH_LONG);
-            return null;
-        }
-    }
-
-    public class Read extends AsyncTask<String, Integer, String> {
+    public class SongsAsyncTask extends AsyncTask<String, Void, Boolean> {
 
         @Override
-        protected String doInBackground(String... strings) {
+        protected Boolean doInBackground(String... params) {
+
             try {
-                json = lastPost("post");
-                return json.getString(String[0]);
+                HttpClient client = new DefaultHttpClient();
+                HttpPost post = new HttpPost(params[0]);
+                HttpResponse response = client.execute(post);
+
+                //status line
+                int status = response.getStatusLine().getStatusCode();
+                if (status == 200) {
+                    HttpEntity entity = response.getEntity();
+                    String data = EntityUtils.toString(entity);
+                    JSONObject jObj = new JSONObject(data);
+                    JSONArray jArray = jObj.getJSONArray("posts");
+
+                    for (int i = 0; i < jArray.length(); i++){
+                        Songs song = new Songs();
+
+                        JSONObject jRealObject = jArray.getJSONObject(i);
+
+                        song.setName(jRealObject.getString("title"));
+                        song.setDescription(jRealObject.getString("excerpt"));
+                        song.setImage(jRealObject.getString("image"));
+
+                        songsList.add(song);
+                    }
+                    return true;
+                }
+            } catch (ClientProtocolException e) {
+                e.printStackTrace();
             } catch (IOException e) {
                 e.printStackTrace();
             } catch (JSONException e) {
                 e.printStackTrace();
             }
-            return null;
+            return false;
         }
 
         @Override
-        protected void onPostExecute(String result) {
+        protected void onPostExecute(Boolean result) {
             super.onPostExecute(result);
+
+            if (!result) {
+
+            } else {
+                SongsAdaptor adapter = new SongsAdaptor(getApplicationContext(),
+                        R.layout.row ,
+                        songsList);
+                list.setAdapter(adapter);
+            }
         }
     }
 }
